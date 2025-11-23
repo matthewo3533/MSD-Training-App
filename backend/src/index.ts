@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
+import fs from 'fs';
 import authRoutes from './routes/auth';
 import intakeRoutes from './routes/intakes';
 import skillRoutes from './routes/skills';
@@ -30,9 +31,9 @@ app.use('/api/users', userRoutes);
 app.use('/api/exports', exportRoutes);
 app.use('/api/audit', auditRoutes);
 
-// Serve static files from React app in production
-if (process.env.NODE_ENV === 'production') {
-  const frontendBuildPath = path.join(__dirname, '../../frontend/dist');
+// Serve static files from React app (always serve in production, also in deployment)
+const frontendBuildPath = path.join(__dirname, '../../frontend/dist');
+if (fs.existsSync(frontendBuildPath)) {
   app.use(express.static(frontendBuildPath));
   
   // Serve React app for all non-API routes
@@ -50,10 +51,11 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
   errorHandler(err, req, res, next);
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
-  if (process.env.NODE_ENV === 'production') {
-    console.log(`Serving frontend from: ${path.join(__dirname, '../../frontend/dist')}`);
+  const frontendBuildPath = path.join(__dirname, '../../frontend/dist');
+  if (fs.existsSync(frontendBuildPath)) {
+    console.log(`Serving frontend from: ${frontendBuildPath}`);
   }
 });
 
