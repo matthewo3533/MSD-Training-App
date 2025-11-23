@@ -22,6 +22,11 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/intakes', intakeRoutes);
@@ -52,10 +57,17 @@ app.use((err: Error, req: express.Request, res: express.Response, next: express.
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`✓ Server running on port ${PORT}`);
+  console.log(`✓ Environment: ${process.env.NODE_ENV || 'development'}`);
   const frontendBuildPath = path.join(__dirname, '../../frontend/dist');
   if (fs.existsSync(frontendBuildPath)) {
-    console.log(`Serving frontend from: ${frontendBuildPath}`);
+    console.log(`✓ Serving frontend from: ${frontendBuildPath}`);
+  } else {
+    console.log(`⚠ Frontend build not found at: ${frontendBuildPath}`);
   }
+  console.log(`✓ Health check available at: http://0.0.0.0:${PORT}/health`);
+}).on('error', (err: NodeJS.ErrnoException) => {
+  console.error('✗ Failed to start server:', err);
+  process.exit(1);
 });
 
