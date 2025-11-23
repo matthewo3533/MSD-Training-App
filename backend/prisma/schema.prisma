@@ -1,0 +1,175 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Note: SQLite doesn't support enums, so we use String with @@check constraint
+// enum Role {
+//   ADMIN
+//   MANAGER
+//   TRAINER
+//   TRAINEE
+// }
+
+model User {
+  id        String   @id @default(uuid())
+  username  String   @unique
+  password  String
+  role      String   // ADMIN, MANAGER, TRAINER, TRAINEE
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  intakeMembers IntakeMember[]
+  traineeSessions TrainingSession[] @relation("TraineeSessions")
+  trainerSessions TrainingSession[] @relation("TrainerSessions")
+  dailySummaries DailySummary[]
+  auditLogs AuditLog[]
+
+  @@index([username])
+  @@map("users")
+}
+
+model Intake {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  createdBy   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  members       IntakeMember[]
+  skillGroups   SkillGroup[]
+  trainingSessions TrainingSession[]
+
+  @@index([createdBy])
+  @@map("intakes")
+}
+
+model IntakeMember {
+  id       String @id @default(uuid())
+  intakeId String
+  userId   String
+
+  intake Intake @relation(fields: [intakeId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([intakeId, userId])
+  @@index([intakeId])
+  @@index([userId])
+  @@map("intake_members")
+}
+
+model SkillGroup {
+  id          String   @id @default(uuid())
+  intakeId    String
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  intake Intake  @relation(fields: [intakeId], references: [id], onDelete: Cascade)
+  skills Skill[]
+
+  @@index([intakeId])
+  @@map("skill_groups")
+}
+
+model Skill {
+  id           String   @id @default(uuid())
+  skillGroupId String
+  name         String
+  description  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  skillGroup     SkillGroup      @relation(fields: [skillGroupId], references: [id], onDelete: Cascade)
+  skillRatings   SkillRating[]
+
+  @@index([skillGroupId])
+  @@map("skills")
+}
+
+model TrainingSession {
+  id          String   @id @default(uuid())
+  intakeId    String
+  traineeId   String
+  trainerId   String
+  sessionDate DateTime
+  comments    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  intake        Intake       @relation(fields: [intakeId], references: [id], onDelete: Cascade)
+  trainee       User         @relation("TraineeSessions", fields: [traineeId], references: [id], onDelete: Cascade)
+  trainer       User         @relation("TrainerSessions", fields: [trainerId], references: [id], onDelete: Cascade)
+  skillRatings  SkillRating[]
+  dailySummary  DailySummary?
+
+  @@index([intakeId])
+  @@index([traineeId])
+  @@index([trainerId])
+  @@index([sessionDate])
+  @@map("training_sessions")
+}
+
+model SkillRating {
+  id                String   @id @default(uuid())
+  trainingSessionId String
+  skillId           String
+  score             Int      // 0-10
+  comments          String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  trainingSession TrainingSession @relation(fields: [trainingSessionId], references: [id], onDelete: Cascade)
+  skill           Skill           @relation(fields: [skillId], references: [id], onDelete: Cascade)
+
+  @@unique([trainingSessionId, skillId])
+  @@index([trainingSessionId])
+  @@index([skillId])
+  @@map("skill_ratings")
+}
+
+model DailySummary {
+  id                String   @id @default(uuid())
+  trainingSessionId String   @unique
+  userId            String
+  content           String   // Rich text HTML from TinyMCE
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  trainingSession TrainingSession @relation(fields: [trainingSessionId], references: [id], onDelete: Cascade)
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([trainingSessionId])
+  @@map("daily_summaries")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String
+  action    String
+  entityType String
+  entityId  String?
+  oldValue  String?
+  newValue  String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
